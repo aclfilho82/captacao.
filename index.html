@@ -522,7 +522,7 @@ async function salvarDadosFirebase() {
       };
     });
     
-    await set(ref(db, 'captacoes/2026.2'), dadosParaSalvar);
+    await set(ref(db, 'captacoes/2026_2'), dadosParaSalvar);
     showSaveStatus('✅ Dados salvos com sucesso!');
   } catch (error) {
     console.error('Erro ao salvar:', error);
@@ -533,7 +533,7 @@ async function salvarDadosFirebase() {
 async function carregarDadosFirebase() {
   try {
     const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, 'captacoes/2026.2'));
+    const snapshot = await get(child(dbRef, 'captacoes/2026_2'));
     
     if (snapshot.exists()) {
       const dadosSalvos = snapshot.val();
