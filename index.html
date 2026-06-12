@@ -522,6 +522,7 @@ async function salvarDadosFirebase() {
       };
     });
     
+    // CORRIGIDO: removido o ponto (.)
     await set(ref(db, 'captacoes/2026_2'), dadosParaSalvar);
     showSaveStatus('✅ Dados salvos com sucesso!');
   } catch (error) {
@@ -529,10 +530,10 @@ async function salvarDadosFirebase() {
     showSaveStatus('❌ Erro ao salvar: ' + error.message, true);
   }
 }
-
 async function carregarDadosFirebase() {
   try {
     const dbRef = ref(db);
+    // CORRIGIDO: removido o ponto (.)
     const snapshot = await get(child(dbRef, 'captacoes/2026_2'));
     
     if (snapshot.exists()) {
@@ -556,7 +557,6 @@ async function carregarDadosFirebase() {
   calcularTotaisGerais();
   updateManagerCards();
 }
-
 // ============================================================
 // FUNÇÕES DA UI
 // ============================================================
