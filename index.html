@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projeção de Captação 26.2 — Com Firebase</title>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --text: #1a1f36;
+  --muted: #5a6e8a;
+  --line: #e4e7ed;
+  --blue: #1f4e78;
+  --blue-light: #2c75ad;
+  --green: #059669;
+  --red: #dc2626;
+  --orange: #ea580c;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.header {
+  background: linear-gradient(135deg, #0f2b3d 0%, #1a4a6f 100%);
+  color: white;
+  padding: 2rem;
+}
+
+.header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+.header p { opacity: 0.85; font-size: 0.875rem; }
+.method-badge { background: var(--orange); color: white; padding: 0.25rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; }
+
+.container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: var(--card);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border: 1px solid var(--line);
+}
+
+.stat-card:hover { transform: translateY(-2px); transition: all 0.2s; }
+.stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.stat-value { font-size: 1.875rem; font-weight: 800; }
+.stat-value.good { color: var(--green); }
+.stat-value.bad { color: var(--red); }
+
+.panel {
+  background: var(--card);
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--gray-50);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.panel-title { font-weight: 700; }
+.panel-title .note { font-size: 0.7rem; font-weight: 400; color: var(--muted); margin-top: 0.25rem; }
+
+.toolbar { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.search-input { padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: 0.5rem; font-size: 0.875rem; width: 200px; }
+.btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.75rem; cursor: pointer; border: none; transition: all 0.2s; }
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover { background: var(--blue-light); }
+.btn-secondary { background: var(--gray-100); color: var(--text); border: 1px solid var(--line); }
+.btn-outline { background: transparent; border: 1px solid var(--line); }
+
+.filter-bar {
+  padding: 0.75rem 1.25rem;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-bar select { padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--line); background: white; }
+
+.ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--line);
+}
+
+.ranking-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ranking-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+.ranking-card.active { border: 2px solid var(--blue); background: #f0f7ff; }
+.ranking-name { font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+.ranking-pct { font-size: 1.5rem; font-weight: 800; }
+.ranking-pct.good { color: var(--green); }
+.ranking-pct.bad { color: var(--red); }
+.bar-bg { height: 0.375rem; background: var(--gray-200); border-radius: 1rem; overflow: hidden; margin-top: 0.5rem; }
+.bar-fill { height: 100%; background: var(--blue); border-radius: 1rem; transition: width 0.3s; }
+.ranking-small { font-size: 0.65rem; color: var(--muted); margin-top: 0.5rem; }
+
+.table-wrapper { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 1300px; }
+.data-table th { background: var(--blue); color: white; padding: 0.75rem 0.5rem; text-align: right; position: sticky; top: 0; }
+.data-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--blue); z-index: 10; }
+.data-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--line); text-align: right; }
+.data-table td:first-child { text-align: left; background: white; position: sticky; left: 0; }
+.data-table tr:hover td { background: #f8fafc; }
+.data-table tr.selected td { background: #eef2ff; }
+.data-table tr.gestor-row td { background: #1f4e78; color: white; font-weight: 700; }
+.data-table tr.gestor-row td:first-child { background: #1f4e78; }
+.data-table tr.gestor-row td input { background: rgba(255,255,255,0.2); color: white; }
+
+.edit-num { width: 80px; padding: 0.375rem; border: 1px solid var(--line); border-radius: 0.5rem; text-align: right; font-weight: 600; background: #fef3c7; }
+.edit-num-fixo { width: 80px; padding: 0.375rem; border: 1px solid var(--line); border-radius: 0.5rem; text-align: right; font-weight: 600; background: #e5e7eb; color: #6b7280; }
+.good-text { color: #059669; font-weight: 700; }
+.bad-text { color: #dc2626; font-weight: 700; }
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.modal.open { display: flex; }
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  width: min(95vw, 900px);
+  max-height: 90vh;
+  overflow: auto;
+}
+.modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+.modal-close { background: #dc2626; color: white; border: none; padding: 0.375rem 0.875rem; border-radius: 0.5rem; cursor: pointer; }
+.modal-body { padding: 1.5rem; }
+canvas { width: 100%; height: auto; background: white; border-radius: 0.5rem; }
+.legend { display: flex; gap: 1rem; margin-top: 1rem; font-size: 0.7rem; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.25rem; }
+.dot.blue { background: var(--blue); }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.info-card {
+  background: #e0f2fe;
+  border-left: 4px solid var(--blue);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+}
+
+.proj-destaque {
+  background: #fef3c7;
+  border-left: 4px solid var(--orange);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.save-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1f4e78;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.save-status.show {
+  opacity: 1;
+}
+
+.save-status.success { background: #059669; }
+.save-status.error { background: #dc2626; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>Projeção de Captação 26.2 <span class="method-badge">Com Firebase</span></h1>
+  <p>Captação MAIO é fixa. Edite a coluna ATUAL para simular cenários. Os dados são salvos automaticamente.</p>
+</header>
+
+<div class="container">
+  <div class="info-card">
+    📊 <strong>Fatores de incremento sazonal (baseado na captação de MAIO):</strong>
+    <span id="fatoresDisplay">calculando...</span>
+  </div>
+
+  <div class="proj-destaque" id="projDestaque">
+    📈 Calculando projeção...
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Captação MAIO/2026 (fixa)</div><div class="stat-value" id="k2026maio">0</div></div>
+    <div class="stat-card"><div class="stat-label">Captação ATUAL (acumulada)</div><div class="stat-value" id="k2026atual">0</div></div>
+    <div class="stat-card"><div class="stat-label">Meta Geral 2026.2</div><div class="stat-value" id="kmeta">32.681</div></div>
+    <div class="stat-card"><div class="stat-label">Projeção até OUT/26</div><div class="stat-value" id="kproj">0</div></div>
+    <div class="stat-card"><div class="stat-label">Projeção / Meta</div><div class="stat-value" id="kgrowth">0%</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        Unidades 
+        <div class="note">Clique na unidade para ver o gráfico. MAIO é fixo. Edite ATUAL para simular.</div>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="search" class="search-input" placeholder="Pesquisar unidade...">
+        <button class="btn btn-primary" onclick="setSortMode('desc')">↓ Maior %</button>
+        <button class="btn btn-secondary" onclick="setSortMode('asc')">↑ Menor %</button>
+        <button class="btn btn-outline" onclick="resetValues()">Restaurar</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <label>Gestor:</label>
+      <select id="managerFilter">
+        <option value="TODOS">Todos</option>
+        <option value="OPERAÇÕES">Operações</option>
+        <option value="PAULO PALMEIRA">Paulo Palmeira</option>
+        <option value="MARCUS PONTE">Marcus Pontes</option>
+        <option value="EDEN FERREIRA">Eden Ferreira</option>
+        <option value="AISLANE BELO">Aislane Belo</option>
+      </select>
+      <label>Unidade:</label>
+      <select id="unitFilter"><option value="TODAS">Todas</option></select>
+    </div>
+
+    <div class="ranking-grid" id="rankingGestores"></div>
+
+    <div class="table-wrapper">
+      <table class="data-table" id="tbl">
+        <thead>
+          <tr>
+            <th>Unidade</th>
+            <th>Gestor</th>
+            <th>Captação<br>MAIO/26<br><span style="font-weight:normal;">(fixo)</span></th>
+            <th>Captação<br>ATUAL<br><span style="font-weight:normal;">(editável)</span></th>
+            <th>Proj. JUN</th>
+            <th>Proj. JUL</th>
+            <th>Proj. AGO</th>
+            <th>Proj. SET</th>
+            <th>Proj. OUT</th>
+            <th>Meta</th>
+            <th>% atual</th>
+            <th>Projeção final</th>
+            <th>% proj.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="unitModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div><strong id="unitTitle">Projeção mensal</strong><div class="note" id="unitSummary"></div></div>
+      <button class="modal-close" onclick="closeUnitModal()">Fechar</button>
+    </div>
+    <div class="modal-body">
+      <canvas id="chartUnit" width="800" height="400"></canvas>
+      <div class="legend"><span><i class="dot blue"></i>Projeção acumulada</span><span><i class="dot green"></i>Captação atual</span><span><i class="dot red"></i>Meta</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="saveStatus" class="save-status">✅ Salvo!</div>
+
+<script type="module">
+// ============================================================
+// FIREBASE CONFIGURAÇÃO (ATUALIZADA)
+// ============================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD3u7unHkkKqtNCF2veoIAgndyi2cFRWAo",
+  authDomain: "captacao262.firebaseapp.com",
+  databaseURL: "https://captacao262-default-rtdb.firebaseio.com",
+  projectId: "captacao262",
+  storageBucket: "captacao262.firebasestorage.app",
+  messagingSenderId: "45706612811",
+  appId: "1:45706612811:web:9ca7a65d8f877cae887dce"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ============================================================
+// DADOS HISTÓRICOS ACUMULADOS
+// ============================================================
+const historicalAcc = {
+  2023: { MAIO: 2018, JUNHO: 4811, JULHO: 11908, AGOSTO: 21241, SETEMBRO: 24669, OUTUBRO: 25986 },
+  2024: { MAIO: 2072, JUNHO: 6251, JULHO: 12310, AGOSTO: 22452, SETEMBRO: 27115, OUTUBRO: 30093 },
+  2025: { MAIO: 1913, JUNHO: 4516, JULHO: 12115, AGOSTO: 20427, SETEMBRO: 24891, OUTUBRO: 26976 }
+};
+
+// Médias dos acumulados
+const avgAcc = {
+  MAIO: (historicalAcc[2023].MAIO + historicalAcc[2024].MAIO + historicalAcc[2025].MAIO) / 3,
+  JUNHO: (historicalAcc[2023].JUNHO + historicalAcc[2024].JUNHO + historicalAcc[2025].JUNHO) / 3,
+  JULHO: (historicalAcc[2023].JULHO + historicalAcc[2024].JULHO + historicalAcc[2025].JULHO) / 3,
+  AGOSTO: (historicalAcc[2023].AGOSTO + historicalAcc[2024].AGOSTO + historicalAcc[2025].AGOSTO) / 3,
+  SETEMBRO: (historicalAcc[2023].SETEMBRO + historicalAcc[2024].SETEMBRO + historicalAcc[2025].SETEMBRO) / 3,
+  OUTUBRO: (historicalAcc[2023].OUTUBRO + historicalAcc[2024].OUTUBRO + historicalAcc[2025].OUTUBRO) / 3
+};
+
+// INCREMENTOS MENSAIS
+const avgIncrements = {
+  MAIO: avgAcc.MAIO,
+  JUNHO: avgAcc.JUNHO - avgAcc.MAIO,
+  JULHO: avgAcc.JULHO - avgAcc.JUNHO,
+  AGOSTO: avgAcc.AGOSTO - avgAcc.JULHO,
+  SETEMBRO: avgAcc.SETEMBRO - avgAcc.AGOSTO,
+  OUTUBRO: avgAcc.OUTUBRO - avgAcc.SETEMBRO
+};
+
+// FATORES SAZONAIS
+const seasonalFactors = {
+  JUN: avgIncrements.JUNHO / avgIncrements.MAIO,
+  JUL: avgIncrements.JULHO / avgIncrements.MAIO,
+  AGO: avgIncrements.AGOSTO / avgIncrements.MAIO,
+  SET: avgIncrements.SETEMBRO / avgIncrements.MAIO,
+  OUT: avgIncrements.OUTUBRO / avgIncrements.MAIO
+};
+
+document.getElementById('fatoresDisplay').innerHTML = `
+  JUN: ${seasonalFactors.JUN.toFixed(3)}x | 
+  JUL: ${seasonalFactors.JUL.toFixed(3)}x | 
+  AGO: ${seasonalFactors.AGO.toFixed(3)}x | 
+  SET: ${seasonalFactors.SET.toFixed(3)}x | 
+  OUT: ${seasonalFactors.OUT.toFixed(3)}x
+`;
+
+// ============================================================
+// FUNÇÃO DE PROJEÇÃO
+// ============================================================
+function getProjection(mayValue, meta = null) {
+  let incJun = mayValue * seasonalFactors.JUN;
+  let incJul = mayValue * seasonalFactors.JUL;
+  let incAgo = mayValue * seasonalFactors.AGO;
+  let incSet = mayValue * seasonalFactors.SET;
+  let incOut = mayValue * seasonalFactors.OUT;
+  
+  let jun = mayValue + incJun;
+  let jul = jun + incJul;
+  let ago = jul + incAgo;
+  let set = ago + incSet;
+  let out = set + incOut;
+  
+  if (meta && meta > 0) {
+    const teto = meta * 1.05;
+    if (jun > teto) jun = teto;
+    if (jul > teto) jul = teto;
+    if (ago > teto) ago = teto;
+    if (set > teto) set = teto;
+    if (out > teto) out = teto;
+  }
+  
+  return [Math.round(jun), Math.round(jul), Math.round(ago), Math.round(set), Math.round(out)];
+}
+
+function getFinalProjection(mayValue, meta = null) {
+  const proj = getProjection(mayValue, meta);
+  return proj[proj.length - 1];
+}
+
+// ============================================================
+// DADOS DAS UNIDADES (MAIO É FIXO)
+// ============================================================
+const unidadesData = [
+  {unidade: "UNINASSAU - Graças", gestor: "PAULO PALMEIRA", maio2026: 74, atual2026: 106, meta: 2123},
+  {unidade: "UNINASSAU - João Pessoa", gestor: "AISLANE BELO", maio2026: 62, atual2026: 85, meta: 797},
+  {unidade: "UNINASSAU - Campina Grande", gestor: "PAULO PALMEIRA", maio2026: 93, atual2026: 108, meta: 772},
+  {unidade: "UNINASSAU - Salvador", gestor: "AISLANE BELO", maio2026: 28, atual2026: 36, meta: 422},
+  {unidade: "UNINASSAU - Natal", gestor: "MARCUS PONTE", maio2026: 83, atual2026: 113, meta: 1099},
+  {unidade: "UNINASSAU - Maceió", gestor: "AISLANE BELO", maio2026: 129, atual2026: 191, meta: 1137},
+  {unidade: "UNINASSAU - Aracajú", gestor: "PAULO PALMEIRA", maio2026: 64, atual2026: 83, meta: 720},
+  {unidade: "UNINASSAU - Fortaleza", gestor: "MARCUS PONTE", maio2026: 77, atual2026: 111, meta: 1097},
+  {unidade: "UNINASSAU - Caruaru", gestor: "AISLANE BELO", maio2026: 75, atual2026: 95, meta: 975},
+  {unidade: "UNINASSAU - São Luís", gestor: "PAULO PALMEIRA", maio2026: 23, atual2026: 31, meta: 401},
+  {unidade: "UNINASSAU - Paulista", gestor: "PAULO PALMEIRA", maio2026: 58, atual2026: 76, meta: 618},
+  {unidade: "UNINASSAU - Redenção (Aliança)", gestor: "MARCUS PONTE", maio2026: 25, atual2026: 38, meta: 492},
+  {unidade: "UNINASSAU - Teresina", gestor: "MARCUS PONTE", maio2026: 48, atual2026: 63, meta: 507},
+  {unidade: "UNINASSAU - Parnaíba", gestor: "MARCUS PONTE", maio2026: 35, atual2026: 46, meta: 447},
+  {unidade: "UNINASSAU - Vitória da Conquista", gestor: "AISLANE BELO", maio2026: 28, atual2026: 35, meta: 331},
+  {unidade: "UNINASSAU - Olinda", gestor: "PAULO PALMEIRA", maio2026: 46, atual2026: 62, meta: 532},
+  {unidade: "UNINASSAU - Petrolina", gestor: "AISLANE BELO", maio2026: 89, atual2026: 118, meta: 906},
+  {unidade: "UNINASSAU - Cabo", gestor: "PAULO PALMEIRA", maio2026: 20, atual2026: 35, meta: 357},
+  {unidade: "UNAMA - Belém", gestor: "EDEN FERREIRA", maio2026: 65, atual2026: 91, meta: 1558},
+  {unidade: "UNAMA - Santarém", gestor: "EDEN FERREIRA", maio2026: 39, atual2026: 48, meta: 586},
+  {unidade: "UNINASSAU - Parangaba", gestor: "MARCUS PONTE", maio2026: 70, atual2026: 92, meta: 895},
+  {unidade: "UNINASSAU - Rio de Janeiro", gestor: "AISLANE BELO", maio2026: 27, atual2026: 31, meta: 298},
+  {unidade: "UNINASSAU - Garanhuns", gestor: "AISLANE BELO", maio2026: 20, atual2026: 22, meta: 301},
+  {unidade: "UNAMA - Marabá", gestor: "EDEN FERREIRA", maio2026: 15, atual2026: 23, meta: 416},
+  {unidade: "UNINASSAU - Maracanaú", gestor: "MARCUS PONTE", maio2026: 58, atual2026: 75, meta: 575},
+  {unidade: "UNINASSAU - Sobral", gestor: "AISLANE BELO", maio2026: 14, atual2026: 18, meta: 217},
+  {unidade: "UNAMA - Porto Velho", gestor: "EDEN FERREIRA", maio2026: 40, atual2026: 61, meta: 235},
+  {unidade: "UNAMA - Boa Vista", gestor: "EDEN FERREIRA", maio2026: 50, atual2026: 65, meta: 645},
+  {unidade: "UNINASSAU - Mossoró", gestor: "MARCUS PONTE", maio2026: 68, atual2026: 90, meta: 556},
+  {unidade: "UNINASSAU - Boa Viagem", gestor: "PAULO PALMEIRA", maio2026: 33, atual2026: 53, meta: 986},
+  {unidade: "UNINASSAU - Arapiraca", gestor: "AISLANE BELO", maio2026: 11, atual2026: 18, meta: 355},
+  {unidade: "UNAMA - Macapá", gestor: "EDEN FERREIRA", maio2026: 20, atual2026: 23, meta: 248},
+  {unidade: "UNINASSAU - Palmas", gestor: "PAULO PALMEIRA", maio2026: 29, atual2026: 38, meta: 455},
+  {unidade: "UNAMA - BR Ananindeua", gestor: "EDEN FERREIRA", maio2026: 40, atual2026: 51, meta: 630},
+  {unidade: "UNAMA - Parque Shopping", gestor: "EDEN FERREIRA", maio2026: 24, atual2026: 30, meta: 561},
+  {unidade: "UNAMA - Rio Branco", gestor: "EDEN FERREIRA", maio2026: 46, atual2026: 64, meta: 247},
+  {unidade: "UNINASSAU - Brasília", gestor: "PAULO PALMEIRA", maio2026: 34, atual2026: 47, meta: 309},
+  {unidade: "UNINASSAU - Caxangá", gestor: "PAULO PALMEIRA", maio2026: 49, atual2026: 68, meta: 619},
+  {unidade: "UNAMA - Castanhal", gestor: "EDEN FERREIRA", maio2026: 8, atual2026: 10, meta: 307},
+  {unidade: "UNINASSAU - Juazeiro", gestor: "MARCUS PONTE", maio2026: 50, atual2026: 64, meta: 536},
+  {unidade: "UNINASSAU - Cacoal", gestor: "EDEN FERREIRA", maio2026: 23, atual2026: 35, meta: 383},
+  {unidade: "UNINASSAU - Serra Talhada", gestor: "AISLANE BELO", maio2026: 27, atual2026: 34, meta: 390},
+  {unidade: "UNINASSAU - Barreiras", gestor: "AISLANE BELO", maio2026: 22, atual2026: 29, meta: 446},
+  {unidade: "Faculdade Unesc/Unama", gestor: "EDEN FERREIRA", maio2026: 0, atual2026: 0, meta: 0},
+  {unidade: "UNINASSAU - Vilhena", gestor: "EDEN FERREIRA", maio2026: 18, atual2026: 21, meta: 249},
+  {unidade: "UNINASSAU - Imperatriz", gestor: "PAULO PALMEIRA", maio2026: 3, atual2026: 3, meta: 51},
+  {unidade: "UNIFAEL - Curitiba", gestor: "AISLANE BELO", maio2026: 10, atual2026: 12, meta: 174},
+  {unidade: "UNIFAEL - Porto Alegre", gestor: "AISLANE BELO", maio2026: 23, atual2026: 27, meta: 99},
+  {unidade: "UNI7", gestor: "OPERAÇÕES", maio2026: 43, atual2026: 57, meta: 451},
+  {unidade: "UNINASSAU - Carpina", gestor: "PAULO PALMEIRA", maio2026: 38, atual2026: 43, meta: 223},
+  {unidade: "UNG - Itaquaquecetuba", gestor: "OPERAÇÕES", maio2026: 40, atual2026: 52, meta: 393},
+  {unidade: "UNG - Guarulhos", gestor: "OPERAÇÕES", maio2026: 95, atual2026: 136, meta: 1086},
+  {unidade: "UNINORTE - Djalma Batista", gestor: "EDEN FERREIRA", maio2026: 47, atual2026: 68, meta: 890},
+  {unidade: "UNINORTE - Cidade Nova", gestor: "EDEN FERREIRA", maio2026: 43, atual2026: 60, meta: 465},
+  {unidade: "UNINORTE - Centro", gestor: "EDEN FERREIRA", maio2026: 63, atual2026: 94, meta: 1250},
+  {unidade: "UNIFAEL - Lapa", gestor: "AISLANE BELO", maio2026: 6, atual2026: 9, meta: 146},
+  {unidade: "UNINORTE - Zona Leste", gestor: "EDEN FERREIRA", maio2026: 25, atual2026: 29, meta: 174},
+  {unidade: "UNAMA - Bragança", gestor: "EDEN FERREIRA", maio2026: 7, atual2026: 16, meta: 252},
+  {unidade: "UNINASSAU - Patos", gestor: "PAULO PALMEIRA", maio2026: 15, atual2026: 20, meta: 180},
+  {unidade: "UNIFAEL - Florianópolis", gestor: "AISLANE BELO", maio2026: 9, atual2026: 16, meta: 111}
+];
+
+const gestoresResumo = [
+  {unidade: "📊 OPERAÇÕES", gestor: "CONSOLIDADO", maio2026: 178, atual2026: 245, meta: 1930},
+  {unidade: "📊 PAULO PALMEIRA", gestor: "CONSOLIDADO", maio2026: 579, atual2026: 773, meta: 8346},
+  {unidade: "📊 MARCUS PONTE", gestor: "CONSOLIDADO", maio2026: 514, atual2026: 692, meta: 6204},
+  {unidade: "📊 EDEN FERREIRA", gestor: "CONSOLIDADO", maio2026: 573, atual2026: 789, meta: 9096},
+  {unidade: "📊 AISLANE BELO", gestor: "CONSOLIDADO", maio2026: 580, atual2026: 776, meta: 7105}
+];
+
+const allData = [...unidadesData, ...gestoresResumo];
+
+let data = JSON.parse(JSON.stringify(allData));
+let selectedUnit = data[0]?.unidade || '';
+let sortMode = 'desc';
+const fmt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+const pct = v => isFinite(v) ? (v * 100).toFixed(1).replace('.', ',') + '%' : '0,0%';
+
+// ============================================================
+// FUNÇÕES DE SALVAMENTO NO FIREBASE
+// ============================================================
+function showSaveStatus(message, isError = false) {
+  const statusDiv = document.getElementById('saveStatus');
+  statusDiv.textContent = message;
+  statusDiv.className = `save-status show ${isError ? 'error' : 'success'}`;
+  setTimeout(() => {
+    statusDiv.classList.remove('show');
+  }, 2000);
+}
+
+async function salvarDadosFirebase() {
+  try {
+    const unidadesParaSalvar = data.filter(r => r.gestor !== 'CONSOLIDADO');
+    const dadosParaSalvar = {};
+    unidadesParaSalvar.forEach(r => {
+      dadosParaSalvar[r.unidade] = {
+        atual2026: r.atual2026,
+        maio2026: r.maio2026,
+        meta: r.meta,
+        gestor: r.gestor
+      };
+    });
+    
+    await set(ref(db, 'captacoes/2026.2'), dadosParaSalvar);
+    showSaveStatus('✅ Dados salvos com sucesso!');
+  } catch (error) {
+    console.error('Erro ao salvar:', error);
+    showSaveStatus('❌ Erro ao salvar: ' + error.message, true);
+  }
+}
+
+async function carregarDadosFirebase() {
+  try {
+    const dbRef = ref(db);
+    const snapshot = await get(child(dbRef, 'captacoes/2026.2'));
+    
+    if (snapshot.exists()) {
+      const dadosSalvos = snapshot.val();
+      
+      data.forEach(item => {
+        if (item.gestor !== 'CONSOLIDADO' && dadosSalvos[item.unidade]) {
+          item.atual2026 = dadosSalvos[item.unidade].atual2026;
+        }
+      });
+      
+      showSaveStatus('📥 Dados carregados do Firebase');
+    } else {
+      console.log('Nenhum dado salvo encontrado, usando dados padrão');
+    }
+  } catch (error) {
+    console.error('Erro ao carregar:', error);
+    showSaveStatus('⚠️ Erro ao carregar dados, usando valores padrão', true);
+  }
+  renderTable();
+  calcularTotaisGerais();
+  updateManagerCards();
+}
+
+// ============================================================
+// FUNÇÕES DA UI
+// ============================================================
+function getProjecaoRow(row) { return getProjection(row.maio2026, row.meta); }
+function getFinalProjectionForRow(row) { return getFinalProjection(row.maio2026, row.meta); }
+function getCurrentPct(row) { return row.meta ? row.atual2026 / row.meta : 0; }
+function getProjPct(row) { return row.meta ? getFinalProjectionForRow(row) / row.meta : 0; }
+
+function calcularTotaisGerais() {
+  const unidades = data.filter(r => r.gestor !== 'CONSOLIDADO');
+  const totalMaio = unidades.reduce((a,r) => a + r.maio2026, 0);
+  const totalAtual = unidades.reduce((a,r) => a + r.atual2026, 0);
+  const totalMeta = 32681;
+  const totalProj = unidades.reduce((a,r) => a + getFinalProjectionForRow(r), 0);
+  
+  document.getElementById('k2026maio').textContent = fmt.format(totalMaio);
+  document.getElementById('k2026atual').textContent = fmt.format(totalAtual);
+  document.getElementById('kmeta').textContent = fmt.format(totalMeta);
+  document.getElementById('kproj').textContent = fmt.format(totalProj);
+  const g = totalMeta ? totalProj / totalMeta : 0;
+  document.getElementById('kgrowth').textContent = pct(g);
+  
+  const projText = document.getElementById('projDestaque');
+  if (totalProj >= totalMeta) {
+    projText.innerHTML = `✅ <strong>PROJEÇÃO: ${fmt.format(totalProj)}</strong> | Meta: ${fmt.format(totalMeta)} | Diferença: +${fmt.format(totalProj - totalMeta)} (${pct((totalProj-totalMeta)/totalMeta)} acima da meta)`;
+    projText.style.borderLeftColor = '#059669';
+  } else {
+    projText.innerHTML = `⚠️ <strong>PROJEÇÃO: ${fmt.format(totalProj)}</strong> | Meta: ${fmt.format(totalMeta)} | Diferença: ${fmt.format(totalProj - totalMeta)} (${pct((totalMeta-totalProj)/totalMeta)} abaixo da meta)`;
+    projText.style.borderLeftColor = '#dc2626';
+  }
+}
+
+function drawUnitChart(row) {
+  const canvas = document.getElementById('chartUnit');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  canvas.width = Math.min(container.clientWidth - 40, 800);
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!row) return;
+  
+  const current = row.atual2026;
+  const mayValue = row.maio2026;
+  const meta = row.meta;
+  const projections = getProjection(mayValue, meta);
+  const labels = ['MAIO', 'JUN', 'JUL', 'AGO', 'SET', 'OUT'];
+  const values = [mayValue, ...projections];
+  
+  const padL = 70, padR = 40, top = 40, bottom = 60;
+  const chartH = canvas.height - top - bottom;
+  const chartW = canvas.width - padL - padR;
+  const maxVal = Math.max(...values, meta, current, 1) * 1.15;
+  
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.fillStyle = '#6b7280';
+  ctx.font = '11px Inter';
+  for (let i = 0; i <= 4; i++) {
+    const y = top + (chartH / 4) * i;
+    const val = maxVal * (1 - i / 4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(canvas.width - padR, y); ctx.stroke();
+    ctx.fillText(fmt.format(val), padL - 8, y + 4);
+  }
+  
+  const getX = idx => padL + idx * (chartW / (labels.length - 1));
+  const getY = val => top + chartH * (1 - val / maxVal);
+  
+  if (meta > 0) {
+    const yMeta = getY(meta);
+    ctx.beginPath(); ctx.setLineDash([8, 6]); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
+    ctx.moveTo(padL, yMeta); ctx.lineTo(canvas.width - padR, yMeta); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#dc2626'; ctx.font = 'bold 11px Inter';
+    ctx.fillText('Meta: ' + fmt.format(meta), padL + 10, yMeta - 5);
+  }
+  
+  if (current > 0 && current !== mayValue) {
+    const yCurrent = getY(current);
+    ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = '#059669'; ctx.lineWidth = 2;
+    ctx.moveTo(padL, yCurrent); ctx.lineTo(canvas.width - padR, yCurrent); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#059669'; ctx.font = 'bold 11px Inter';
+    ctx.fillText('Atual: ' + fmt.format(current), padL + 10, yCurrent + 15);
+  }
+  
+  ctx.beginPath(); ctx.strokeStyle = '#1f4e78'; ctx.lineWidth = 3; ctx.setLineDash([]);
+  for (let i = 0; i < values.length; i++) {
+    const x = getX(i), y = getY(values[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  
+  for (let i = 0; i < values.length; i++) {
+    const x = getX(i), y = getY(values[i]);
+    ctx.fillStyle = '#1f4e78'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1f2937'; ctx.font = 'bold 11px Inter';
+    ctx.fillText(fmt.format(values[i]), x - 20, y - 8);
+  }
+  
+  ctx.fillStyle = '#6b7280'; ctx.font = '11px Inter'; ctx.textAlign = 'center';
+  for (let i = 0; i < labels.length; i++) ctx.fillText(labels[i], getX(i), canvas.height - 20);
+  
+  ctx.fillStyle = '#1f2937'; ctx.font = 'bold 12px Inter'; ctx.textAlign = 'left';
+  ctx.fillText(`Captação MAIO (fixa): ${fmt.format(mayValue)}`, padL, 25);
+  ctx.fillText(`Captação ATUAL: ${fmt.format(current)}`, padL + 240, 25);
+  ctx.fillText(`Projeção final: ${fmt.format(projections[4])}`, padL + 480, 25);
+}
+
+function updateUnitPanel() {
+  const row = data.find(r => r.unidade === selectedUnit) || data[0];
+  if (!row) return;
+  document.getElementById('unitTitle').textContent = `Projeção mensal — ${row.unidade}`;
+  document.getElementById('unitSummary').innerHTML = `Meta: ${fmt.format(row.meta)} | MAIO (fixo): ${fmt.format(row.maio2026)} | ATUAL: ${fmt.format(row.atual2026)}`;
+  setTimeout(() => drawUnitChart(row), 100);
+}
+
+function openUnitModal() { document.getElementById('unitModal').classList.add('open'); updateUnitPanel(); }
+function closeUnitModal() { document.getElementById('unitModal').classList.remove('open'); }
+
+function renderTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const tbody = document.querySelector('#tbl tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  let rows = data.filter(r => r.unidade.toLowerCase().includes(q));
+  
+  rows.sort((a, b) => {
+    if (a.gestor === 'CONSOLIDADO' && b.gestor !== 'CONSOLIDADO') return 1;
+    if (a.gestor !== 'CONSOLIDADO' && b.gestor === 'CONSOLIDADO') return -1;
+    const pa = getCurrentPct(a), pb = getCurrentPct(b);
+    return sortMode === 'asc' ? pa - pb : pb - pa;
+  });
+  
+  rows.forEach(r => {
+    const proj = getProjection(r.maio2026, r.meta);
+    const tr = document.createElement('tr');
+    if (r.unidade === selectedUnit) tr.classList.add('selected');
+    if (r.gestor === 'CONSOLIDADO') tr.classList.add('gestor-row');
+    
+    tr.innerHTML = `
+      <td>${r.unidade}${r.gestor === 'CONSOLIDADO' ? '' : ''}</td>
+      <td>${r.gestor !== 'CONSOLIDADO' ? r.gestor : '-'}</td>
+      <td><input class="edit-num-fixo" type="text" value="${Math.round(r.maio2026)}" readonly style="background:#e5e7eb; color:#6b7280;"></td>
+      <td><input class="edit-num edit-atual" type="number" value="${Math.round(r.atual2026)}" data-unidade="${r.unidade}" ${r.gestor === 'CONSOLIDADO' ? 'readonly' : ''}></td>
+      <td>${fmt.format(proj[0])}</td>
+      <td>${fmt.format(proj[1])}</td>
+      <td>${fmt.format(proj[2])}</td>
+      <td>${fmt.format(proj[3])}</td>
+      <td>${fmt.format(proj[4])}</td>
+      <td><strong>${fmt.format(r.meta)}</strong></td>
+      <td class="${getCurrentPct(r) >= 1 ? 'good-text' : 'bad-text'}"><strong>${pct(getCurrentPct(r))}</strong></td>
+      <td><strong>${fmt.format(getFinalProjectionForRow(r))}</strong></td>
+      <td class="${getProjPct(r) >= 1 ? 'good-text' : 'bad-text'}">${pct(getProjPct(r))}</td>
+    `;
+    
+    tr.addEventListener('click', (e) => {
+      if (e.target.classList && e.target.classList.contains('edit-atual')) return;
+      selectedUnit = r.unidade;
+      renderTable();
+      openUnitModal();
+    });
+    tbody.appendChild(tr);
+  });
+  
+  document.querySelectorAll('.edit-atual').forEach(inp => {
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.addEventListener('input', async (e) => {
+      const row = data.find(x => x.unidade === e.target.dataset.unidade);
+      if (row && row.gestor !== 'CONSOLIDADO') {
+        row.atual2026 = Number(e.target.value) || 0;
+        renderTable();
+        calcularTotaisGerais();
+        updateManagerCards();
+        await salvarDadosFirebase();
+      }
+    });
+  });
+}
+
+function resetValues() {
+  data = JSON.parse(JSON.stringify(allData));
+  data.forEach(r => { 
+    r.maio2026 = Number(r.maio2026) || 0;
+    r.atual2026 = Number(r.atual2026) || 0;
+    r.meta = Number(r.meta) || 0;
+  });
+  selectedUnit = data[0]?.unidade || '';
+  renderTable();
+  calcularTotaisGerais();
+  updateManagerCards();
+  salvarDadosFirebase();
+}
+
+function setSortMode(mode) { sortMode = mode; renderTable(); }
+
+const gestoresList = ['OPERAÇÕES', 'PAULO PALMEIRA', 'MARCUS PONTE', 'EDEN FERREIRA', 'AISLANE BELO'];
+
+function updateManagerCards() {
+  const box = document.getElementById('rankingGestores');
+  if (!box) return;
+  box.innerHTML = '';
+  
+  gestoresList.forEach(g => {
+    const unidadesGestor = data.filter(r => r.gestor === g);
+    const totalMaio = unidadesGestor.reduce((a,r) => a + r.maio2026, 0);
+    const totalAtual = unidadesGestor.reduce((a,r) => a + r.atual2026, 0);
+    const totalMeta = unidadesGestor.reduce((a,r) => a + r.meta, 0);
+    const totalProj = unidadesGestor.reduce((a,r) => a + getFinalProjectionForRow(r), 0);
+    const percent = totalMeta ? totalProj / totalMeta : 0;
+    
+    const div = document.createElement('div');
+    div.className = 'ranking-card';
+    div.innerHTML = `
+      <div class="ranking-name">${g}</div>
+      <div class="ranking-pct ${percent >= 1 ? 'good' : 'bad'}">${pct(percent)}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(percent * 100, 140)}%"></div></div>
+      <div class="ranking-small">Proj: ${fmt.format(totalProj)} | Meta: ${fmt.format(totalMeta)}<br>MAIO: ${fmt.format(totalMaio)} | ATUAL: ${fmt.format(totalAtual)}</div>
+    `;
+    div.addEventListener('click', () => {
+      document.getElementById('managerFilter').value = g;
+      filterByManager(g);
+    });
+    box.appendChild(div);
+  });
+}
+
+function filterByManager(gestor) {
+  const tbody = document.querySelector('#tbl tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  let rows = data.filter(r => r.gestor === gestor);
+  
+  rows.sort((a, b) => {
+    const pa = getCurrentPct(a), pb = getCurrentPct(b);
+    return sortMode === 'asc' ? pa - pb : pb - pa;
+  });
+  
+  rows.forEach(r => {
+    const proj = getProjection(r.maio2026, r.meta);
+    const tr = document.createElement('tr');
+    if (r.unidade === selectedUnit) tr.classList.add('selected');
+    tr.innerHTML = `
+      <td>${r.unidade}</td>
+      <td>${r.gestor}</td>
+      <td><input class="edit-num-fixo" type="text" value="${Math.round(r.maio2026)}" readonly style="background:#e5e7eb; color:#6b7280;"></td>
+      <td><input class="edit-num edit-atual" type="number" value="${Math.round(r.atual2026)}" data-unidade="${r.unidade}"></td>
+      <td>${fmt.format(proj[0])}</td>
+      <td>${fmt.format(proj[1])}</td>
+      <td>${fmt.format(proj[2])}</td>
+      <td>${fmt.format(proj[3])}</td>
+      <td>${fmt.format(proj[4])}</td>
+      <td><strong>${fmt.format(r.meta)}</strong></td>
+      <td class="${getCurrentPct(r) >= 1 ? 'good-text' : 'bad-text'}"><strong>${pct(getCurrentPct(r))}</strong></td>
+      <td><strong>${fmt.format(getFinalProjectionForRow(r))}</strong></td>
+      <td class="${getProjPct(r) >= 1 ? 'good-text' : 'bad-text'}">${pct(getProjPct(r))}</td>
+    `;
+    tr.addEventListener('click', (e) => {
+      if (e.target.classList && e.target.classList.contains('edit-atual')) return;
+      selectedUnit = r.unidade;
+      filterByManager(gestor);
+      openUnitModal();
+    });
+    tbody.appendChild(tr);
+  });
+  
+  document.querySelectorAll('.edit-atual').forEach(inp => {
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.addEventListener('input', async (e) => {
+      const row = data.find(x => x.unidade === e.target.dataset.unidade);
+      if (row) {
+        row.atual2026 = Number(e.target.value) || 0;
+        filterByManager(gestor);
+        calcularTotaisGerais();
+        await salvarDadosFirebase();
+      }
+    });
+  });
+  
+  const totalMaio = rows.reduce((a,r) => a + r.maio2026, 0);
+  const totalAtual = rows.reduce((a,r) => a + r.atual2026, 0);
+  const totalMeta = rows.reduce((a,r) => a + r.meta, 0);
+  const totalProj = rows.reduce((a,r) => a + getFinalProjectionForRow(r), 0);
+  
+  document.getElementById('k2026maio').textContent = fmt.format(totalMaio);
+  document.getElementById('k2026atual').textContent = fmt.format(totalAtual);
+  document.getElementById('kmeta').textContent = fmt.format(totalMeta);
+  document.getElementById('kproj').textContent = fmt.format(totalProj);
+  const p = totalMeta ? totalProj / totalMeta : 0;
+  document.getElementById('kgrowth').textContent = pct(p);
+}
+
+function initFilters() {
+  const mf = document.getElementById('managerFilter');
+  const uf = document.getElementById('unitFilter');
+  if (!mf || !uf) return;
+  
+  mf.addEventListener('change', () => {
+    if (mf.value === 'TODOS') {
+      renderTable();
+      calcularTotaisGerais();
+    } else {
+      filterByManager(mf.value);
+    }
+  });
+  
+  uf.innerHTML = '<option value="TODAS">Todas</option>';
+  unidadesData.sort((a,b) => a.unidade.localeCompare(b.unidade)).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.unidade;
+    opt.textContent = r.unidade;
+    uf.appendChild(opt);
+  });
+  
+  uf.addEventListener('change', () => {
+    if (uf.value === 'TODAS') {
+      renderTable();
+      calcularTotaisGerais();
+    } else {
+      const row = data.find(r => r.unidade === uf.value);
+      if (row) {
+        selectedUnit = row.unidade;
+        renderTable();
+        openUnitModal();
+      }
+    }
+  });
+  
+  updateManagerCards();
+  renderTable();
+  calcularTotaisGerais();
+}
+
+// Inicialização
+setTimeout(async () => {
+  await carregarDadosFirebase();
+  initFilters();
+  
+  // Tornar funções globais para onclick
+  window.setSortMode = setSortMode;
+  window.resetValues = resetValues;
+  window.closeUnitModal = closeUnitModal;
+  window.openUnitModal = openUnitModal;
+}, 50);
+</script>
+</body>
+</html> 
